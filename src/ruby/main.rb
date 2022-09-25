@@ -1,5 +1,6 @@
 require 'active_support'
 require 'active_support/core_ext/time/zones'
+require 'base64'
 require 'curb'
 require 'date'
 require 'digest/sha1'
@@ -169,6 +170,7 @@ class Main < Sinatra::Base
                 :command => 'update_game_stats',
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
+                :submissions => @@games[game_pin][:submissions]
             })
         end
     end
@@ -241,7 +243,8 @@ class Main < Sinatra::Base
                             :participant_pin => participant_pin,
                             :display_pin => display_pin,
                             :displays => Set.new(),
-                            :participants => Set.new()
+                            :participants => Set.new(),
+                            :submissions => []
                         }
                         @@client_info[client_id] = {
                             :role => :host,
@@ -290,6 +293,23 @@ class Main < Sinatra::Base
                             send_game_stats(game_pin)
                         end
                         print_stats
+                    elsif request['command'] == 'new_task'
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:participants].each do |cid|
+                            send_to_client(cid, {:command => :new_task})
+                        end
+                        @@games[game_pin][:submissions] = []
+                    elsif request['command'] == 'png'
+                        base64 = request['png']
+                        png = Base64.decode64(base64)
+                        sha1 = Digest::SHA1.hexdigest(png)[0, 16]
+                        path = "/data/gen/#{sha1}.png"
+                        File.open(path, 'w') do |f|
+                            f.write png
+                        end
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:submissions] << "#{WEB_ROOT}/gen/#{sha1}.png"
+                        send_game_stats(game_pin)
                     end
                 rescue StandardError => e
                     STDERR.puts e
