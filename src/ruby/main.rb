@@ -157,6 +157,22 @@ class Main < Sinatra::Base
         end
     end
 
+    def print_stats
+        STDERR.puts "clients: #{@@clients.size}, games: #{@@games.size}, available pins: #{@@available_pins.size}"
+    end
+
+    def send_game_stats(game_pin)
+        ids = [@@games[game_pin][:mod]]
+        ids += @@games[game_pin][:displays].to_a
+        ids.each do |cid|
+            send_to_client(cid, {
+                :command => 'update_game_stats',
+                :display_count => @@games[game_pin][:displays].size,
+                :participant_count => @@games[game_pin][:participants].size,
+            })
+        end
+    end
+
     get '/ws' do
         if Faye::WebSocket.websocket?(request.env)
             ws = Faye::WebSocket.new(request.env)
@@ -165,13 +181,45 @@ class Main < Sinatra::Base
                 client_id = request.env['HTTP_SEC_WEBSOCKET_KEY']
                 ws.send({:hello => 'world'})
                 @@clients[client_id] = ws
-                STDERR.puts @@clients.keys.to_yaml
+                print_stats()
             end
 
             ws.on(:close) do |event|
                 client_id = request.env['HTTP_SEC_WEBSOCKET_KEY']
+                if @@client_info[client_id]
+                    if @@client_info[client_id][:role] == :host
+                        # game host has disconnected, disconnect all displays and participants
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:displays].each do |cid|
+                            @@clients[cid].close()
+                        end
+                        @@games[game_pin][:participants].each do |cid|
+                            @@clients[cid].close()
+                        end
+                        @@available_pins << @@games[game_pin][:display_pin]
+                        @@available_pins << @@games[game_pin][:participant_pin]
+                        @@available_pins << game_pin
+                        @@games.delete(game_pin)
+                    elsif @@client_info[client_id][:role] == :display
+                        # display has disconnected
+                        game_pin = @@client_info[client_id][:game_pin]
+                        begin
+                            @@games[game_pin][:displays].delete(client_id)
+                            send_game_stats(game_pin)
+                        rescue
+                        end
+                    elsif @@client_info[client_id][:role] == :participant
+                        # participant has disconnected
+                        game_pin = @@client_info[client_id][:game_pin]
+                        begin
+                            @@games[game_pin][:participants].delete(client_id)
+                            send_game_stats(game_pin)
+                        rescue
+                        end
+                    end
+                end
                 @@clients.delete(client_id) if @@clients.include?(client_id)
-                STDERR.puts @@clients.keys.to_yaml
+                print_stats()
             end
 
             ws.on(:message) do |msg|
@@ -190,6 +238,8 @@ class Main < Sinatra::Base
                         display_pin = @@available_pins.shift
                         @@games[game_pin] = {
                             :mod => client_id,
+                            :participant_pin => participant_pin,
+                            :display_pin => display_pin,
                             :displays => Set.new(),
                             :participants => Set.new()
                         }
@@ -199,34 +249,47 @@ class Main < Sinatra::Base
                         }
                         @@expected_pins[display_pin] = { :type => :display, :game_pin => game_pin }
                         @@expected_pins[participant_pin] = { :type => :participant, :game_pin => game_pin }
-                        STDERR.puts @@games.to_yaml
-                        STDERR.puts @@client_info.to_yaml
+                        ws.send({:command => :become_host, :display_pin => display_pin, :participant_pin => participant_pin}.to_json)
                         STDERR.puts @@expected_pins.to_yaml
-                        ws.send({:display_pin => display_pin, :participant_pin => participant_pin}.to_json)
+                        print_stats
                     elsif request['command'] == 'pin'
                         pin = request['pin']
+                        unless @@expected_pins.include?(pin)
+                            send_to_client(client_id, {
+                                :command => :wrong_pin
+                            })
+                        end
                         assert(@@expected_pins.include?(pin))
                         game_pin = @@expected_pins[pin][:game_pin]
                         if @@expected_pins[pin][:type] == :display
+                            unless @@games[game_pin][:displays].empty?
+                                send_to_client(client_id, {
+                                    :command => :wrong_pin
+                                })
+                                raise 'oops'
+                            end
                             @@games[game_pin][:displays] << client_id
                             @@client_info[client_id] = {
                                 :role => :display,
                                 :game_pin => game_pin
                             }
-                            # send stats to mod
+                            send_to_client(client_id, {
+                                :command => :become_display,
+                                :participant_pin => @@games[game_pin][:participant_pin]
+                            })
+                            send_game_stats(game_pin)
                         elsif @@expected_pins[pin][:type] == :participant
                             @@games[game_pin][:participants] << client_id
                             @@client_info[client_id] = {
                                 :role => :participant,
                                 :game_pin => game_pin
                             }
-                            # send stats to mod
+                            send_to_client(client_id, {
+                                :command => :become_participant
+                            })
+                            send_game_stats(game_pin)
                         end
-                        mod_client_id = @@games[game_pin][:mod]
-                        send_to_client(mod_client_id, {
-                            :display_count => @@games[game_pin][:display].size,
-                            :participant_count => @@games[game_pin][:participants].size,
-                        })
+                        print_stats
                     end
                 rescue StandardError => e
                     STDERR.puts e
