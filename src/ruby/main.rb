@@ -170,7 +170,8 @@ class Main < Sinatra::Base
                 :command => 'update_game_stats',
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
-                :submissions => @@games[game_pin][:submissions]
+                :submissions => @@games[game_pin][:submissions],
+                :client_id_for_submission = {}
             })
         end
     end
@@ -244,7 +245,8 @@ class Main < Sinatra::Base
                             :display_pin => display_pin,
                             :displays => Set.new(),
                             :participants => Set.new(),
-                            :submissions => []
+                            :submissions => [],
+                            :client_id_for_submission = {}
                         }
                         @@client_info[client_id] = {
                             :role => :host,
@@ -309,8 +311,17 @@ class Main < Sinatra::Base
                             f.write png
                         end
                         game_pin = @@client_info[client_id][:game_pin]
-                        @@games[game_pin][:submissions] << "#{WEB_ROOT}/gen/#{sha1}.png"
+                        url = "#{WEB_ROOT}/gen/#{sha1}.png"
+                        @@games[game_pin][:submissions] << url
+                        @@games[game_pin][:client_id_for_submission][url] = client_id
                         send_game_stats(game_pin)
+                    elsif request['command'] == 'accept'
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:submissions] << "#{WEB_ROOT}/gen/#{sha1}.png"
+                        reaction = request['reaction']
+                        url = request['url']
+                        cid = @@games[game_pin][:client_id_for_submission][url]
+                        send_to_client(cid, {:reaction => reaction})
                     end
                 rescue StandardError => e
                     STDERR.puts e
