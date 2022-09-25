@@ -322,7 +322,7 @@ class Main < Sinatra::Base
                         reaction = request['reaction']
                         url = request['url']
                         cid = @@games[game_pin][:client_id_for_submission][url]
-                        send_to_client(cid, {:reaction => reaction})
+                        send_to_client(cid, {:command => 'react', :reaction => reaction})
                     end
                 rescue StandardError => e
                     STDERR.puts e
