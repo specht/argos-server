@@ -231,6 +231,7 @@ class Main < Sinatra::Base
                     request = {}
                     unless msg.data.empty?
                         request = JSON.parse(msg.data)
+                        STDERR.puts request.to_json
                     end
                     if request['hello'] == 'world'
                         ws.send({:status => 'welcome'}.to_json)
