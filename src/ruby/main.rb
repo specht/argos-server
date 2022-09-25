@@ -315,7 +315,7 @@ class Main < Sinatra::Base
                         @@games[game_pin][:submissions] << url
                         @@games[game_pin][:client_id_for_submission][url] = client_id
                         send_game_stats(game_pin)
-                    elsif request['command'] == 'accept'
+                    elsif request['command'] == 'react'
                         game_pin = @@client_info[client_id][:game_pin]
                         @@games[game_pin][:submissions] << "#{WEB_ROOT}/gen/#{sha1}.png"
                         reaction = request['reaction']
