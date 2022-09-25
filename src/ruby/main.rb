@@ -170,8 +170,7 @@ class Main < Sinatra::Base
                 :command => 'update_game_stats',
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
-                :submissions => @@games[game_pin][:submissions],
-                :client_id_for_submission => {}
+                :submissions => @@games[game_pin][:submissions]
             })
         end
     end
@@ -318,7 +317,6 @@ class Main < Sinatra::Base
                         send_game_stats(game_pin)
                     elsif request['command'] == 'react'
                         game_pin = @@client_info[client_id][:game_pin]
-                        @@games[game_pin][:submissions] << "#{WEB_ROOT}/gen/#{sha1}.png"
                         reaction = request['reaction']
                         url = request['url']
                         cid = @@games[game_pin][:client_id_for_submission][url]
