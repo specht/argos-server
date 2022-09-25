@@ -175,7 +175,12 @@ class Main < Sinatra::Base
         end
     end
 
+    options '/ws/*' do
+        response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
+    end
+
     get '/ws' do
+        response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
         if Faye::WebSocket.websocket?(request.env)
             ws = Faye::WebSocket.new(request.env)
 
