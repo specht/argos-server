@@ -299,6 +299,7 @@ class Main < Sinatra::Base
                             send_to_client(cid, {:command => :new_task})
                         end
                         @@games[game_pin][:submissions] = []
+                        send_game_stats(game_pin)
                     elsif request['command'] == 'png'
                         base64 = request['png']
                         png = Base64.decode64(base64)
