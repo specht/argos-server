@@ -246,7 +246,7 @@ class Main < Sinatra::Base
                             :displays => Set.new(),
                             :participants => Set.new(),
                             :submissions => [],
-                            :client_id_for_submission = {}
+                            :client_id_for_submission => {}
                         }
                         @@client_info[client_id] = {
                             :role => :host,
