@@ -203,6 +203,9 @@ class Main < Sinatra::Base
                         @@games[game_pin][:participants].each do |cid|
                             @@clients[cid].close()
                         end
+                        @@expected_pins.delete(@@games[game_pin][:display_pin])
+                        @@expected_pins.delete(@@games[game_pin][:participant_pin])
+                        @@expected_pins.delete(game_pin)
                         @@available_pins << @@games[game_pin][:display_pin]
                         @@available_pins << @@games[game_pin][:participant_pin]
                         @@available_pins << game_pin
