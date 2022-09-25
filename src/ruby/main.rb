@@ -171,7 +171,7 @@ class Main < Sinatra::Base
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
                 :submissions => @@games[game_pin][:submissions],
-                :client_id_for_submission = {}
+                :client_id_for_submission => {}
             })
         end
     end
