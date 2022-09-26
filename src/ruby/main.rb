@@ -170,17 +170,18 @@ class Main < Sinatra::Base
                 :command => 'update_game_stats',
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
-                :submissions => @@games[game_pin][:submissions]
+                :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
+                :task_running => @@games[game_pin][:task_running]
             })
         end
     end
 
-    options '/ws/*' do
-        response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
-    end
+    # options '/ws/*' do
+    #     response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
+    # end
 
     get '/ws' do
-        response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
+        # response.headers['Access-Control-Allow-Origin'] = "https://argus.gymnasiumsteglitz.de"
         if Faye::WebSocket.websocket?(request.env)
             ws = Faye::WebSocket.new(request.env)
 
@@ -253,7 +254,10 @@ class Main < Sinatra::Base
                             :displays => Set.new(),
                             :participants => Set.new(),
                             :submissions => [],
-                            :client_id_for_submission => {}
+                            :png_for_sha1 => {},
+                            :client_id_for_submission_index => {},
+                            :non_rejected_submissions => Set.new(),
+                            :task_running => false
                         }
                         @@client_info[client_id] = {
                             :role => :host,
@@ -308,26 +312,34 @@ class Main < Sinatra::Base
                             send_to_client(cid, {:command => :new_task})
                         end
                         @@games[game_pin][:submissions] = []
+                        @@games[game_pin][:png_for_sha1] = {}
+                        @@games[game_pin][:client_id_for_submission_index] = {}
+                        @@games[game_pin][:non_rejected_submissions] = Set.new()
+                        @@games[game_pin][:task_running] = true
                         send_game_stats(game_pin)
                     elsif request['command'] == 'png'
                         base64 = request['png']
                         png = Base64.decode64(base64)
                         sha1 = Digest::SHA1.hexdigest(png)[0, 16]
-                        path = "/data/gen/#{sha1}.png"
-                        File.open(path, 'w') do |f|
-                            f.write png
-                        end
                         game_pin = @@client_info[client_id][:game_pin]
                         url = "#{WEB_ROOT}/gen/#{sha1}.png"
-                        @@games[game_pin][:submissions] << url
-                        @@games[game_pin][:client_id_for_submission][url] = client_id
+                        index = @@games[game_pin][:submissions].size
+                        @@games[game_pin][:submissions] << sha1
+                        @@games[game_pin][:png_for_sha1][sha1] = base64
+                        @@games[game_pin][:client_id_for_submission_index][index] = client_id
+                        @@games[game_pin][:non_rejected_submissions] << index
                         send_game_stats(game_pin)
+                        send_to_client(@@games[game_pin][:mod], {:command => :submission, :base64 => base64})
                     elsif request['command'] == 'react'
                         game_pin = @@client_info[client_id][:game_pin]
                         reaction = request['reaction']
-                        url = request['url']
-                        cid = @@games[game_pin][:client_id_for_submission][url]
+                        index = request['index']
+                        cid = @@games[game_pin][:client_id_for_submission_index][index]
                         send_to_client(cid, {:command => 'react', :reaction => reaction})
+                        if reaction == 'reject'
+                            @@games[game_pin][:non_rejected_submissions].delete(index)
+                            send_game_stats(game_pin)
+                        end
                     end
                 rescue StandardError => e
                     STDERR.puts e
