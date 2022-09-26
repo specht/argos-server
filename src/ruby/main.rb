@@ -171,7 +171,8 @@ class Main < Sinatra::Base
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
                 :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
-                :task_running => @@games[game_pin][:task_running]
+                :task_running => @@games[game_pin][:task_running],
+                :show_index => @@games[game_pin][:show_index]
             })
         end
     end
@@ -316,6 +317,14 @@ class Main < Sinatra::Base
                         @@games[game_pin][:client_id_for_submission_index] = {}
                         @@games[game_pin][:non_rejected_submissions] = Set.new()
                         @@games[game_pin][:task_running] = true
+                        send_game_stats(game_pin)
+                    elsif request['command'] == 'end_task'
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:task_running] = false
+                        send_game_stats(game_pin)
+                    elsif request['command'] == 'show'
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:show_index] = request['index']
                         send_game_stats(game_pin)
                     elsif request['command'] == 'png'
                         base64 = request['png']
