@@ -166,14 +166,18 @@ class Main < Sinatra::Base
         ids = [@@games[game_pin][:mod]]
         ids += @@games[game_pin][:displays].to_a
         ids.each do |cid|
-            send_to_client(cid, {
+            data = {
                 :command => 'update_game_stats',
                 :display_count => @@games[game_pin][:displays].size,
                 :participant_count => @@games[game_pin][:participants].size,
                 :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
                 :task_running => @@games[game_pin][:task_running],
                 :show_index => @@games[game_pin][:show_index]
-            })
+            }
+            if @@games[game_pin][:displays].include?(cid) && @@games[game_pin][:show_index]
+                data[:show_png] = @@games[game_pin][:png_for_sha1][@@games[game_pin][:submissions][@@games[game_pin][:show_index]]]
+            end
+            send_to_client(cid, data)
         end
     end
 
