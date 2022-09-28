@@ -13,7 +13,7 @@ PROFILE = [:static, :dynamic]
 # export QTS_DEVELOPMENT=1
 
 DEVELOPMENT    = !(ENV['QTS_DEVELOPMENT'].nil?)
-PROJECT_NAME = 'argus' + (DEVELOPMENT ? 'dev' : '')
+PROJECT_NAME = 'argos' + (DEVELOPMENT ? 'dev' : '')
 DEV_NGINX_PORT = 8035
 LOGS_PATH = DEVELOPMENT ? './logs' : "/home/qts/logs/#{PROJECT_NAME}#{STAGING ? '_staging' : ''}"
 DATA_PATH = DEVELOPMENT ? './data' : "/home/qts/data/#{PROJECT_NAME}#{STAGING ? '_staging' : ''}"
