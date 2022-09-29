@@ -182,6 +182,24 @@ class Main < Sinatra::Base
         end
     end
 
+    def remove_game(game_pin)
+        @@games[game_pin][:displays].each do |cid|
+            @@clients[cid].close()
+        end
+        @@games[game_pin][:participants].each do |cid|
+            @@clients[cid].close()
+        end
+        @@expected_pins.delete(@@games[game_pin][:display_pin])
+        @@expected_pins.delete(@@games[game_pin][:participant_pin])
+        @@expected_pins.delete(game_pin)
+        @@available_pins << @@games[game_pin][:display_pin]
+        @@available_pins << @@games[game_pin][:participant_pin]
+        @@available_pins << game_pin
+        sid = @@games[game_pin][:sid]
+        @@game_pin_for_host_sid.delete(sid)
+        @@games.delete(game_pin)
+    end
+
     options '/ws/*' do
         response.headers['Access-Control-Allow-Origin'] = "https://argos.gymnasiumsteglitz.de"
     end
@@ -263,6 +281,23 @@ class Main < Sinatra::Base
                         ws.send({:command => :become_host, :display_pin => display_pin, :participant_pin => participant_pin, :sid => sid}.to_json)
                         STDERR.puts @@expected_pins.to_yaml
                         print_stats
+                    elsif request['command'] == 'sid'
+                        # re-join game as host
+                        remove_game(@@client_info[client_id][:game_pin])
+                        game_pin = @@game_pin_for_host_sid[request['pin']]
+                        assert(!(game_pin.nil?))
+                        data = {}
+                        send_to_client(client_id, {
+                            :command => :rejoin_with_sid,
+                            :game_pin => game_pin,
+                            :display_count => @@games[game_pin][:displays].size,
+                            :participant_count => @@games[game_pin][:participants].size,
+                            :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
+                            :task_running => @@games[game_pin][:task_running],
+                            :base64_list => @@games[game_pin][:submissions].map do |sha1|
+                                @@games[game_pin][:png_for_sha1][sha1]
+                            end
+                        })
                     elsif request['command'] == 'pin'
                         pin = request['pin']
                         unless @@expected_pins.include?(pin)
@@ -345,27 +380,22 @@ class Main < Sinatra::Base
                         end
                     elsif request['command'] == 'remove_game'
                         game_pin = @@client_info[client_id][:game_pin]
-                        @@games[game_pin][:displays].each do |cid|
-                            @@clients[cid].close()
-                        end
-                        @@games[game_pin][:participants].each do |cid|
-                            @@clients[cid].close()
-                        end
-                        @@expected_pins.delete(@@games[game_pin][:display_pin])
-                        @@expected_pins.delete(@@games[game_pin][:participant_pin])
-                        @@expected_pins.delete(game_pin)
-                        @@available_pins << @@games[game_pin][:display_pin]
-                        @@available_pins << @@games[game_pin][:participant_pin]
-                        @@available_pins << game_pin
-                        sid = @@games[game_pin][:sid]
-                        @@game_pin_for_host_sid.delete(sid)
-                        @@games.delete(game_pin)
+                        remove_game(game_pin)
                     end
                 rescue StandardError => e
                     STDERR.puts e
                 end
             end
             ws.rack_response
+        end
+    end
+
+    get '/sid/:sid' do
+        sid = params['sid']
+        if @@game_pin_for_host_sid[sid]
+            respond_raw_with_mimetype('proceed', 'text/plain')
+        else
+            halt 404
         end
     end
 
