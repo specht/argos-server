@@ -286,6 +286,10 @@ class Main < Sinatra::Base
                         remove_game(@@client_info[client_id][:game_pin])
                         game_pin = @@game_pin_for_host_sid[request['pin']]
                         assert(!(game_pin.nil?))
+                        @@client_info[client_id] = {
+                            :role => :host,
+                            :game_pin => game_pin
+                        }
                         data = {}
                         send_to_client(client_id, {
                             :command => :rejoin_with_sid,
