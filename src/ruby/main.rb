@@ -390,7 +390,7 @@ class Main < Sinatra::Base
         end
     end
 
-    get '/sid/:sid' do
+    get '/api/sid/:sid' do
         sid = params['sid']
         if @@game_pin_for_host_sid[sid]
             respond_raw_with_mimetype('proceed', 'text/plain')
