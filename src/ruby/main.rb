@@ -295,7 +295,6 @@ class Main < Sinatra::Base
                         print_stats
                     elsif request['command'] == 'sid'
                         # re-join game as host
-                        remove_game(@@client_info[client_id][:game_pin])
                         game_pin = @@game_pin_for_host_sid[request['sid']]
                         assert(!(game_pin.nil?))
                         @@games[game_pin][:last_activity] = Time.now.to_i
