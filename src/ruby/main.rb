@@ -202,23 +202,7 @@ class Main < Sinatra::Base
                 client_id = request.env['HTTP_SEC_WEBSOCKET_KEY']
                 if @@client_info[client_id]
                     if @@client_info[client_id][:role] == :host
-                        # game host has disconnected, disconnect all displays and participants
-                        game_pin = @@client_info[client_id][:game_pin]
-                        @@games[game_pin][:displays].each do |cid|
-                            @@clients[cid].close()
-                        end
-                        @@games[game_pin][:participants].each do |cid|
-                            @@clients[cid].close()
-                        end
-                        @@expected_pins.delete(@@games[game_pin][:display_pin])
-                        @@expected_pins.delete(@@games[game_pin][:participant_pin])
-                        @@expected_pins.delete(game_pin)
-                        @@available_pins << @@games[game_pin][:display_pin]
-                        @@available_pins << @@games[game_pin][:participant_pin]
-                        @@available_pins << game_pin
-                        sid = @@games[game_pin][:sid]
-                        @@game_pin_for_host_sid.delete(sid)
-                        @@games.delete(game_pin)
+                        # do nothing so that the host will be able to re-connect
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
                         game_pin = @@client_info[client_id][:game_pin]
@@ -359,6 +343,23 @@ class Main < Sinatra::Base
                             @@games[game_pin][:non_rejected_submissions].delete(index)
                             send_game_stats(game_pin)
                         end
+                    elsif request['command'] == 'remove_game'
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:displays].each do |cid|
+                            @@clients[cid].close()
+                        end
+                        @@games[game_pin][:participants].each do |cid|
+                            @@clients[cid].close()
+                        end
+                        @@expected_pins.delete(@@games[game_pin][:display_pin])
+                        @@expected_pins.delete(@@games[game_pin][:participant_pin])
+                        @@expected_pins.delete(game_pin)
+                        @@available_pins << @@games[game_pin][:display_pin]
+                        @@available_pins << @@games[game_pin][:participant_pin]
+                        @@available_pins << game_pin
+                        sid = @@games[game_pin][:sid]
+                        @@game_pin_for_host_sid.delete(sid)
+                        @@games.delete(game_pin)
                     end
                 rescue StandardError => e
                     STDERR.puts e
