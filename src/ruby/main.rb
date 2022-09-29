@@ -393,9 +393,9 @@ class Main < Sinatra::Base
     get '/api/sid/:sid' do
         sid = params['sid']
         if @@game_pin_for_host_sid[sid]
-            respond_raw_with_mimetype('proceed', 'text/plain')
+            status 200
         else
-            halt 404
+            status 404
         end
     end
 
