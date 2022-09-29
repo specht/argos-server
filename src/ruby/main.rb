@@ -253,6 +253,17 @@ class Main < Sinatra::Base
                     if request['hello'] == 'world'
                         ws.send({:status => 'welcome'}.to_json)
                     elsif request['command'] == 'new'
+                        # check for stale games and remove them
+                        remove_game_pins = []
+                        @@games.each_pair do |game_pin, game|
+                            if Time.now.to_i > game[:last_activity] + 60 * 60
+                                remove_game_pins << game_pin
+                            end
+                        end
+                        remove_game_pins.each do |game_pin|
+                            remove_game(game_pin)
+                        end
+                        
                         assert(@@available_pins.size >= 3)
                         game_pin = @@available_pins.shift
                         participant_pin = @@available_pins.shift
@@ -269,7 +280,8 @@ class Main < Sinatra::Base
                             :client_id_for_submission_index => {},
                             :non_rejected_submissions => Set.new(),
                             :task_running => false,
-                            :sid => sid
+                            :sid => sid,
+                            :last_activity => Time.now.to_i
                         }
                         @@game_pin_for_host_sid[sid] = game_pin
                         @@client_info[client_id] = {
@@ -286,6 +298,7 @@ class Main < Sinatra::Base
                         remove_game(@@client_info[client_id][:game_pin])
                         game_pin = @@game_pin_for_host_sid[request['pin']]
                         assert(!(game_pin.nil?))
+                        @@games[game_pin][:last_activity] = Time.now.to_i
                         @@client_info[client_id] = {
                             :role => :host,
                             :game_pin => game_pin
@@ -342,6 +355,7 @@ class Main < Sinatra::Base
                         print_stats
                     elsif request['command'] == 'new_task'
                         game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:last_activity] = Time.now.to_i
                         @@games[game_pin][:participants].each do |cid|
                             send_to_client(cid, {:command => :new_task})
                         end
@@ -357,6 +371,7 @@ class Main < Sinatra::Base
                         send_game_stats(game_pin)
                     elsif request['command'] == 'show'
                         game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:last_activity] = Time.now.to_i
                         @@games[game_pin][:show_index] = request['index']
                         send_game_stats(game_pin)
                     elsif request['command'] == 'png'
