@@ -298,6 +298,7 @@ class Main < Sinatra::Base
                         game_pin = @@game_pin_for_host_sid[request['sid']]
                         assert(!(game_pin.nil?))
                         @@games[game_pin][:last_activity] = Time.now.to_i
+                        @@games[game_pin][:mod] = client_id
                         @@client_info[client_id] = {
                             :role => :host,
                             :game_pin => game_pin
