@@ -141,6 +141,7 @@ class Main < Sinatra::Base
     @@clients = {}
     @@client_info = {}
     @@games = {}
+    @@game_pin_for_host_sid = {}
     @@expected_pins = {}
 
     def htmlentities(s)
@@ -215,6 +216,8 @@ class Main < Sinatra::Base
                         @@available_pins << @@games[game_pin][:display_pin]
                         @@available_pins << @@games[game_pin][:participant_pin]
                         @@available_pins << game_pin
+                        sid = @@games[game_pin][:sid]
+                        @@game_pin_for_host_sid.delete(sid)
                         @@games.delete(game_pin)
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
@@ -252,6 +255,7 @@ class Main < Sinatra::Base
                         game_pin = @@available_pins.shift
                         participant_pin = @@available_pins.shift
                         display_pin = @@available_pins.shift
+                        sid = RandomTag.generate(24)
                         @@games[game_pin] = {
                             :mod => client_id,
                             :participant_pin => participant_pin,
@@ -262,15 +266,17 @@ class Main < Sinatra::Base
                             :png_for_sha1 => {},
                             :client_id_for_submission_index => {},
                             :non_rejected_submissions => Set.new(),
-                            :task_running => false
+                            :task_running => false,
+                            :sid => sid
                         }
+                        @@game_pin_for_host_sid[sid] = game_pin
                         @@client_info[client_id] = {
                             :role => :host,
                             :game_pin => game_pin
                         }
                         @@expected_pins[display_pin] = { :type => :display, :game_pin => game_pin }
                         @@expected_pins[participant_pin] = { :type => :participant, :game_pin => game_pin }
-                        ws.send({:command => :become_host, :display_pin => display_pin, :participant_pin => participant_pin}.to_json)
+                        ws.send({:command => :become_host, :display_pin => display_pin, :participant_pin => participant_pin, :sid => sid}.to_json)
                         STDERR.puts @@expected_pins.to_yaml
                         print_stats
                     elsif request['command'] == 'pin'
