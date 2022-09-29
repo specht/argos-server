@@ -263,7 +263,7 @@ class Main < Sinatra::Base
                         remove_game_pins.each do |game_pin|
                             remove_game(game_pin)
                         end
-                        
+
                         assert(@@available_pins.size >= 3)
                         game_pin = @@available_pins.shift
                         participant_pin = @@available_pins.shift
@@ -296,7 +296,7 @@ class Main < Sinatra::Base
                     elsif request['command'] == 'sid'
                         # re-join game as host
                         remove_game(@@client_info[client_id][:game_pin])
-                        game_pin = @@game_pin_for_host_sid[request['pin']]
+                        game_pin = @@game_pin_for_host_sid[request['sid']]
                         assert(!(game_pin.nil?))
                         @@games[game_pin][:last_activity] = Time.now.to_i
                         @@client_info[client_id] = {
