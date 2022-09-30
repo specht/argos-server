@@ -304,7 +304,7 @@ class Main < Sinatra::Base
                         ws.send({:status => 'welcome'}.to_json)
                     elsif request['command'] == 'new'
                         # check for stale games and remove them
-                        remove_stale_games()
+                        Main.remove_stale_games()
 
                         assert(@@available_pins.size >= 3)
                         game_pin = @@available_pins.shift
