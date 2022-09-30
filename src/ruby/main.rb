@@ -61,14 +61,51 @@ class Main < Sinatra::Base
         set :show_exceptions, false
     end
 
+    def debug(message, index = 0)
+        index = 0
+        begin
+            while index < caller_locations.size - 1 && ['transaction', 'neo4j_query', 'neo4j_query_expect_one'].include?(caller_locations[index].base_label)
+                index += 1
+            end
+        rescue
+            index = 0
+        end
+        # STDERR.puts caller_locations.to_yaml
+        l = caller_locations[index]
+        ls = ''
+        begin
+            ls = "#{l.path.sub('/app/', '')}:#{l.lineno} @ #{l.base_label}"
+        rescue
+            ls = "#{l[0].sub('/app/', '')}:#{l[1]}"
+        end
+        STDERR.puts "#{DateTime.now.strftime('%H:%M:%S')} [#{ls}] #{message}"
+    end
+
+    def debug_error(message)
+        l = caller_locations.first
+        ls = ''
+        begin
+            ls = "#{l.path.sub('/app/', '')}:#{l.lineno} @ #{l.base_label}"
+        rescue
+            ls = "#{l[0].sub('/app/', '')}:#{l[1]}"
+        end
+        STDERR.puts "#{DateTime.now.strftime('%H:%M:%S')} [ERROR] [#{ls}] #{message}"
+    end
+
     configure do
         @@compiled_files = {}
         @@available_pins = (0...10000).map { |i| sprintf('%04d', i) }.shuffle
         STDERR.puts "Server is up and running!"
     end
 
-    def assert(condition, message = 'assertion failed')
-        raise message unless condition
+    def assert(condition, message = 'assertion failed', suppress_backtrace = false, delay = nil)
+        unless condition
+            debug_error message
+            e = StandardError.new(message)
+            e.set_backtrace([]) if suppress_backtrace
+            sleep delay unless delay.nil?
+            raise e
+        end
     end
 
     def test_request_parameter(data, key, options)
