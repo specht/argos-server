@@ -426,6 +426,8 @@ class Main < Sinatra::Base
                         png = Base64.decode64(base64)
                         sha1 = Digest::SHA1.hexdigest(png)[0, 16]
                         game_pin = @@client_info[client_id][:game_pin]
+                        debug sha1
+                        debug base64
                         url = "#{WEB_ROOT}/gen/#{sha1}.png"
                         index = @@games[game_pin][:submissions].size
                         @@games[game_pin][:submissions] << sha1
