@@ -241,7 +241,7 @@ class Main < Sinatra::Base
     def self.remove_stale_games
         remove_game_pins = []
         @@games.each_pair do |game_pin, game|
-            if Time.now.to_i > game[:last_activity] + 60
+            if @@games[game_pin][:mod].nil? && Time.now.to_i > game[:last_activity] + 60
                 remove_game_pins << game_pin
             end
         end
@@ -267,6 +267,8 @@ class Main < Sinatra::Base
                 if @@client_info[client_id]
                     if @@client_info[client_id][:role] == :host
                         # do nothing so that the host will be able to re-connect
+                        game_pin = @@client_info[client_id][:game_pin]
+                        @@games[game_pin][:mod] = nil
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
                         game_pin = @@client_info[client_id][:game_pin]
@@ -330,7 +332,7 @@ class Main < Sinatra::Base
                         @@expected_pins[display_pin] = { :type => :display, :game_pin => game_pin }
                         @@expected_pins[participant_pin] = { :type => :participant, :game_pin => game_pin }
                         ws.send({:command => :become_host, :display_pin => display_pin, :participant_pin => participant_pin, :sid => sid}.to_json)
-                        STDERR.puts @@expected_pins.to_yaml
+                        # STDERR.puts @@expected_pins.to_yaml
                         print_stats
                     elsif request['command'] == 'sid'
                         # re-join game as host
