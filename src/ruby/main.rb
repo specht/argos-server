@@ -57,10 +57,6 @@ def parse_markdown(s)
 end
 
 class Main < Sinatra::Base
-    configure do
-        set :show_exceptions, false
-    end
-
     def debug(message, index = 0)
         index = 0
         begin
