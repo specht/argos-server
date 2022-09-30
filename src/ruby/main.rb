@@ -235,7 +235,7 @@ class Main < Sinatra::Base
         sid = @@games[game_pin][:sid]
         @@game_pin_for_host_sid.delete(sid)
         @@games.delete(game_pin)
-        debug "Removed game #{game_pin}."
+        STDERR.puts "Removed game #{game_pin}."
     end
 
     options '/ws/*' do
