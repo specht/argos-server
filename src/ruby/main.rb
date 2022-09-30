@@ -268,7 +268,9 @@ class Main < Sinatra::Base
                     if @@client_info[client_id][:role] == :host
                         # do nothing so that the host will be able to re-connect
                         game_pin = @@client_info[client_id][:game_pin]
-                        @@games[game_pin][:mod] = nil
+                        if @@games[game_pin]
+                            @@games[game_pin][:mod] = nil
+                        end
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
                         game_pin = @@client_info[client_id][:game_pin]
