@@ -219,7 +219,7 @@ class Main < Sinatra::Base
         end
     end
 
-    def remove_game(game_pin)
+    def self.remove_game(game_pin)
         @@games[game_pin][:displays].each do |cid|
             @@clients[cid].close()
         end
@@ -235,10 +235,23 @@ class Main < Sinatra::Base
         sid = @@games[game_pin][:sid]
         @@game_pin_for_host_sid.delete(sid)
         @@games.delete(game_pin)
+        debug "Removed game #{game_pin}."
     end
 
     options '/ws/*' do
         response.headers['Access-Control-Allow-Origin'] = "https://argos.gymnasiumsteglitz.de"
+    end
+
+    def self.remove_stale_games
+        remove_game_pins = []
+        @@games.each_pair do |game_pin, game|
+            if Time.now.to_i > game[:last_activity] + 60
+                remove_game_pins << game_pin
+            end
+        end
+        remove_game_pins.each do |game_pin|
+            self.remove_game(game_pin)
+        end
     end
 
     get '/ws' do
@@ -291,18 +304,11 @@ class Main < Sinatra::Base
                         ws.send({:status => 'welcome'}.to_json)
                     elsif request['command'] == 'new'
                         # check for stale games and remove them
-                        remove_game_pins = []
-                        @@games.each_pair do |game_pin, game|
-                            if Time.now.to_i > game[:last_activity] + 60 * 60
-                                remove_game_pins << game_pin
-                            end
-                        end
-                        remove_game_pins.each do |game_pin|
-                            remove_game(game_pin)
-                        end
+                        remove_stale_games()
 
                         assert(@@available_pins.size >= 3)
                         game_pin = @@available_pins.shift
+                        debug "Starting new game: #{game_pin}"
                         participant_pin = @@available_pins.shift
                         display_pin = @@available_pins.shift
                         sid = RandomTag.generate(24)
@@ -334,6 +340,7 @@ class Main < Sinatra::Base
                         # re-join game as host
                         game_pin = @@game_pin_for_host_sid[request['sid']]
                         assert(!(game_pin.nil?))
+                        debug "Joining with SID: #{request['sid']} => belongs to game #{game_pin}"
                         @@games[game_pin][:last_activity] = Time.now.to_i
                         @@games[game_pin][:mod] = client_id
                         @@client_info[client_id] = {
@@ -361,6 +368,7 @@ class Main < Sinatra::Base
                         end
                         assert(@@expected_pins.include?(pin))
                         game_pin = @@expected_pins[pin][:game_pin]
+                        debug "Got PIN: #{pin} => belongs to game #{game_pin}"
                         if @@expected_pins[pin][:type] == :display
                             unless @@games[game_pin][:displays].empty?
                                 send_to_client(client_id, {
@@ -392,6 +400,7 @@ class Main < Sinatra::Base
                         print_stats
                     elsif request['command'] == 'new_task'
                         game_pin = @@client_info[client_id][:game_pin]
+                        debug "Starting new round for game #{game_pin}"
                         @@games[game_pin][:last_activity] = Time.now.to_i
                         @@games[game_pin][:participants].each do |cid|
                             send_to_client(cid, {:command => :new_task})
@@ -404,6 +413,7 @@ class Main < Sinatra::Base
                         send_game_stats(game_pin)
                     elsif request['command'] == 'end_task'
                         game_pin = @@client_info[client_id][:game_pin]
+                        debug "Ending round for game #{game_pin}"
                         @@games[game_pin][:task_running] = false
                         send_game_stats(game_pin)
                     elsif request['command'] == 'show'
@@ -436,7 +446,7 @@ class Main < Sinatra::Base
                         end
                     elsif request['command'] == 'remove_game'
                         game_pin = @@client_info[client_id][:game_pin]
-                        remove_game(game_pin)
+                        Main.remove_game(game_pin)
                     end
                 rescue StandardError => e
                     STDERR.puts e
@@ -452,6 +462,13 @@ class Main < Sinatra::Base
             status 200
         else
             status 404
+        end
+    end
+
+    Thread.new do
+        loop do
+            Main.remove_stale_games()
+            sleep 30
         end
     end
 
