@@ -270,6 +270,8 @@ class Main < Sinatra::Base
                         game_pin = @@client_info[client_id][:game_pin]
                         if @@games[game_pin]
                             @@games[game_pin][:mod] = nil
+                            @@games[game_pin][:last_activity] = Time.now.to_i
+
                         end
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
