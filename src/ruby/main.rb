@@ -351,6 +351,7 @@ class Main < Sinatra::Base
                         send_to_client(client_id, {
                             :command => :rejoin_with_sid,
                             :game_pin => game_pin,
+                            :display_pin => @@games[game_pin][:display_pin],
                             :display_count => @@games[game_pin][:displays].size,
                             :participant_count => @@games[game_pin][:participants].size,
                             :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
