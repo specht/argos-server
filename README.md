@@ -2,7 +2,7 @@
 
 Dieser Server ist das Backend der [Argos-App](https://github.com/specht/argos).
 
-# Wie kann ich den Server lokal starten?
+## Wie kann ich den Server lokal starten?
 
 ```
 ./config.rb build
@@ -10,7 +10,7 @@ Dieser Server ist das Backend der [Argos-App](https://github.com/specht/argos).
 ```
 Hinweis: `config.rb` ist ein Wrapper um `docker-compose`, der die `docker-compose.yaml` generiert und dann die Kommandozeilenargumente an `docker-compose` durchreicht.
 
-# Wie kann ich den Server im Internet starten?
+## Wie kann ich den Server im Internet starten?
 
 Passe zuerst die Konstanten `WEBSITE_HOST` und `LETSENCRYPT_EMAIL` in `credentials.rb` an, anschließend können die Container erstellt und gestartet werden:
 
