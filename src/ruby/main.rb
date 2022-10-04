@@ -224,10 +224,8 @@ class Main < Sinatra::Base
         end
         @@expected_pins.delete(@@games[game_pin][:display_pin])
         @@expected_pins.delete(@@games[game_pin][:participant_pin])
-        @@expected_pins.delete(game_pin)
         @@available_pins << @@games[game_pin][:display_pin]
         @@available_pins << @@games[game_pin][:participant_pin]
-        @@available_pins << game_pin
         sid = @@games[game_pin][:sid]
         @@game_pin_for_host_sid.delete(sid)
         @@games.delete(game_pin)
@@ -271,7 +269,6 @@ class Main < Sinatra::Base
                         if @@games[game_pin]
                             @@games[game_pin][:mod] = nil
                             @@games[game_pin][:last_activity] = Time.now.to_i
-
                         end
                     elsif @@client_info[client_id][:role] == :display
                         # display has disconnected
@@ -308,8 +305,8 @@ class Main < Sinatra::Base
                         # check for stale games and remove them
                         Main.remove_stale_games()
 
-                        assert(@@available_pins.size >= 3)
-                        game_pin = @@available_pins.shift
+                        assert(@@available_pins.size >= 2)
+                        game_pin = RandomTag.generate(24)
                         debug "Starting new game: #{game_pin}"
                         participant_pin = @@available_pins.shift
                         display_pin = @@available_pins.shift
