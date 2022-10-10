@@ -206,7 +206,9 @@ class Main < Sinatra::Base
                 :participant_count => @@games[game_pin][:participants].size,
                 :non_rejected_submissions => @@games[game_pin][:non_rejected_submissions].size,
                 :task_running => @@games[game_pin][:task_running],
-                :show_index => @@games[game_pin][:show_index]
+                :show_index => @@games[game_pin][:show_index],
+                :accept_count => @@games[game_pin][:accept_count],
+                :discuss_count => @@games[game_pin][:discuss_count],
             }
             if @@games[game_pin][:displays].include?(cid) && @@games[game_pin][:show_index]
                 data[:show_png] = @@games[game_pin][:png_for_sha1][@@games[game_pin][:submissions][@@games[game_pin][:show_index]]]
@@ -410,6 +412,8 @@ class Main < Sinatra::Base
                         @@games[game_pin][:client_id_for_submission_index] = {}
                         @@games[game_pin][:non_rejected_submissions] = Set.new()
                         @@games[game_pin][:task_running] = true
+                        @@games[game_pin][:accept_count] = 0
+                        @@games[game_pin][:discuss_count] = 0
                         send_game_stats(game_pin)
                     elsif request['command'] == 'end_task'
                         game_pin = @@client_info[client_id][:game_pin]
@@ -442,8 +446,13 @@ class Main < Sinatra::Base
                         send_to_client(cid, {:command => 'react', :reaction => reaction})
                         if reaction == 'reject'
                             @@games[game_pin][:non_rejected_submissions].delete(index)
-                            send_game_stats(game_pin)
                         end
+                        if reaction == 'accept'
+                            @@games[game_pin][:accept_count] += 1
+                        elsif reaction == 'discuss'
+                            @@games[game_pin][:discuss_count] += 1
+                        end
+                        send_game_stats(game_pin)
                     elsif request['command'] == 'remove_game'
                         game_pin = @@client_info[client_id][:game_pin]
                         Main.remove_game(game_pin)
